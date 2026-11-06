@@ -371,3 +371,15 @@ footer p {
 .paper-more:hover {
     text-decoration: underline;
 }
+
+/* Nav search box */
+.nav-links{display:flex;align-items:center;flex-wrap:wrap;}
+.nav-search{margin-left:2rem;}
+.nav-search input{font:inherit;font-size:.9rem;padding:.4rem .7rem;border:1px solid #cfd6dd;border-radius:6px;width:12rem;max-width:100%;}
+.nav-search input:focus{outline:2px solid var(--secondary-color);border-color:transparent;}
+@media (max-width: 768px){.nav-search{margin-left:0;}.nav-search input{width:100%;}}
+.paper-title .yr, .yr{color:#888;font-weight:400;white-space:nowrap;}
+.home-search{display:flex;gap:.5rem;margin:0 0 2rem;}
+.home-search input{flex:1;min-width:0;font:inherit;font-size:1.1rem;padding:.75rem 1rem;border:1px solid #cfd6dd;border-radius:8px;}
+.home-search input:focus{outline:2px solid var(--secondary-color);border-color:transparent;}
+.home-search button{font:inherit;font-size:1rem;padding:.75rem 1.25rem;border:0;border-radius:8px;background:var(--primary-color);color:#fff;cursor:pointer;}

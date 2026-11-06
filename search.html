@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search &mdash; P.H. Handel Research Archive</title>
+<meta name="description" content="Full-text search across the publications of physicist Peter H. Handel: quantum 1/f noise, GaN devices, ball lightning, sensors, oscillators and nanotechnology.">
+<link rel="canonical" href="https://handelphysics.com/search.html">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .search-wrap{max-width:900px;margin:2rem auto;padding:0 1.25rem;}
+  .search-wrap h1{color:var(--primary-color);margin-bottom:.5rem;}
+  .backlink{display:inline-block;margin:1rem 0;font-weight:600;}
+  .sbox{display:flex;gap:.5rem;margin:1rem 0 .4rem;}
+  .sbox input{flex:1;min-width:0;font:inherit;font-size:1.05rem;padding:.6rem .8rem;border:1px solid #cfd6dd;border-radius:6px;}
+  .sbox input:focus{outline:2px solid var(--secondary-color);border-color:transparent;}
+  .sbox button{font:inherit;padding:.6rem 1rem;border:0;border-radius:6px;background:var(--primary-color);color:#fff;cursor:pointer;}
+  .hint{color:#777;font-size:.85rem;margin-bottom:1rem;}
+  #status{color:#555;margin:1rem 0;}
+  .res{padding:.9rem 0;border-bottom:1px solid #eef1f4;}
+  .res h3{font-size:1.05rem;margin:0 0 .2rem;line-height:1.35;}
+  .res h3 a{color:var(--primary-color);text-decoration:none;}
+  .res h3 a:hover{color:var(--secondary-color);text-decoration:underline;}
+  .meta{font-size:.8rem;color:#888;margin-bottom:.3rem;}
+  .meta a{color:var(--secondary-color);}
+  .snip{font-size:.9rem;color:#444;line-height:1.55;margin:.2rem 0;}
+  .snip .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#999;margin-right:.35rem;}
+  .sortrow{font-size:.88rem;color:#555;}.sortrow label{margin-left:.6rem;cursor:pointer;}
+  .yr{color:#888;font-weight:400;}
+  mark{background:#fff1a8;padding:0 1px;border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="search-wrap">
+  <a class="backlink" href="index.html">&larr; Back to home</a>
+  <h1>Search the Archive</h1>
+  <form class="sbox" role="search" onsubmit="go(event)">
+    <input id="q" type="search" name="q" placeholder="e.g. ball lightning, GaN HFET, Morkoç, 1/f" aria-label="Search the archive" autofocus>
+    <button type="submit">Search</button>
+  </form>
+  <div class="hint">Searches titles, summaries and the full text of every paper. All words must match; use "quotes" for an exact phrase.</div>
+  <div class="sortrow">Sort: <label><input type="radio" name="sort" value="rel" checked> Best match</label> <label><input type="radio" name="sort" value="new"> Newest</label> <label><input type="radio" name="sort" value="old"> Oldest</label></div>
+  <div id="status"></div>
+  <div id="results"></div>
+</div>
+<script>
+var DOCS=null, $q=document.getElementById('q'), $r=document.getElementById('results'), $s=document.getElementById('status');
+function norm(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function terms(q){var out=[],m,re=/"([^"]+)"|(\S+)/g;while((m=re.exec(q)))out.push(norm(m[1]||m[2]));return out.filter(Boolean);}
+function count(h,t){var c=0,i=h.indexOf(t);while(i>=0&&c<50){c++;i=h.indexOf(t,i+t.length);}return c;}
+function hl(text,ts){
+  var n=norm(text),marks=[];
+  ts.forEach(function(t){var i=n.indexOf(t);while(i>=0){marks.push([i,i+t.length]);i=n.indexOf(t,i+t.length);}});
+  if(!marks.length)return esc(text);
+  marks.sort(function(a,b){return a[0]-b[0];});
+  var out='',p=0;marks.forEach(function(m){if(m[0]<p)return;out+=esc(text.slice(p,m[0]))+'<mark>'+esc(text.slice(m[0],m[1]))+'</mark>';p=m[1];});
+  return out+esc(text.slice(p));
+}
+function snippet(text,ts,len){
+  var n=norm(text),best=-1;
+  for(var i=0;i<ts.length&&best<0;i++)best=n.indexOf(ts[i]);
+  if(best<0)return '';
+  var a=Math.max(0,best-len/2),b=Math.min(text.length,a+len);
+  a=text.lastIndexOf(' ',a)+1;
+  return (a>0?'… ':'')+hl(text.slice(a,b),ts)+(b<text.length?' …':'');
+}
+function run(q){
+  var ts=terms(q);
+  if(!ts.length){$s.textContent='';$r.innerHTML='';return;}
+  var hits=[];
+  DOCS.forEach(function(d){
+    if(!d._t){d._t=norm(d.t);d._s=norm(d.s);d._x=norm(d.x);d._n=d.n?('#'+d.n):'';}
+    var score=0;
+    for(var i=0;i<ts.length;i++){
+      var t=ts[i],a=count(d._t,t),b=count(d._s,t),c=count(d._x,t),num=(d._n==='#'+t.replace(/^#/,''))?1:0;
+      if(!a&&!b&&!c&&!num)return;
+      score+=num*100+a*20+b*5+Math.min(c,25);
+    }
+    if(d.k==='page')score*=0.6;
+    hits.push([score,d]);
+  });
+  var mode=(document.querySelector('input[name=sort]:checked')||{}).value;
+  hits.sort(function(x,y){
+    if(mode!=='rel'&&x[1].k!==y[1].k)return x[1].k==='paper'?-1:1;
+    if(mode==='new')return (y[1].y||0)-(x[1].y||0)||y[0]-x[0];
+    if(mode==='old')return (x[1].y||9999)-(y[1].y||9999)||y[0]-x[0];
+    return y[0]-x[0];});
+  $s.textContent=hits.length?(hits.length+' result'+(hits.length>1?'s':'')+' for “'+q+'”'):('No results for “'+q+'”');
+  $r.innerHTML=hits.slice(0,100).map(function(h){
+    var d=h[1],s1=d.s?snippet(d.s,ts,260):'',s2=snippet(d.x,ts,220),h3,meta;
+    if(d.k==='paper'){
+      h3='<a href="'+esc(d.u)+'" target="_blank" rel="noopener">#'+esc(d.n)+' &middot; '+hl(d.t,ts)+(d.y?' <span class="yr">('+d.y+')</span>':'')+'</a>';
+      meta=esc(d.u.split('.').pop().toUpperCase())+' &middot; <a href="papers.html#p'+esc(d.n)+'">listing &amp; summary</a>';
+    }else{
+      h3='<a href="'+esc(d.u)+'">'+hl(d.t,ts)+'</a>';meta='Site page';
+    }
+    return '<div class="res"><h3>'+h3+'</h3><div class="meta">'+meta+'</div>'+
+      (s1?'<div class="snip"><span class="lbl">Summary</span>'+s1+'</div>':'')+
+      (s2&&s2!==s1?'<div class="snip"><span class="lbl">'+(d.k==='paper'?'Full text':'Page')+'</span>'+s2+'</div>':'')+'</div>';
+  }).join('');
+}
+function go(e){
+  if(e)e.preventDefault();
+  var q=$q.value.trim();
+  try{history.replaceState(null,'',q?('?q='+encodeURIComponent(q)):location.pathname);}catch(_){}
+  if(DOCS)run(q);
+}
+var initial=new URLSearchParams(location.search).get('q')||'';
+$q.value=initial;
+$s.textContent='Loading index…';
+fetch('js/search-index.json').then(function(r){return r.json();}).then(function(d){
+  DOCS=d;$s.textContent='';run(initial);
+}).catch(function(){$s.textContent='Could not load the search index.';});
+document.querySelectorAll('input[name=sort]').forEach(function(r){r.onchange=function(){go();};});
+var tmr;$q.addEventListener('input',function(){clearTimeout(tmr);tmr=setTimeout(go,250);});
+</script>
+</body>
+</html>
